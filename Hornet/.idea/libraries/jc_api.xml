@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="jc-api">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/jc-api.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/jc-api.jar!/" />
+    </SOURCES>
+  </library>
+</component>

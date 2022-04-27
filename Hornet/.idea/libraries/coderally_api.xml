@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="coderally-api">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/coderally-api.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/coderally-api.jar!/" />
+    </SOURCES>
+  </library>
+</component>
