@@ -1,17 +1,6 @@
-[2022.04.27 18:49.29.581]  0 No existing info
-[2022.04.27 18:52.28.045]  0 ->- Loading .games UI extension point ->-
-[2022.04.27 18:52.28.048]  0   Loaded game UI: com.ibm.jc.coderally
-[2022.04.27 18:52.28.049]  0 -<- Done loading .games UI extension point -<-
-[2022.04.27 18:52.28.049]  0   Loaded icon: com.ibm.jc.coderally
-[2022.04.27 18:52.28.339]  0 Auto-update thread starting
-[2022.04.27 18:52.30.347]  0 Auto-update thread running
-[2022.04.27 18:52.32.457]  0 Auto-update thread starting
-[2022.04.27 18:58.41.123]  0 No existing info
-[2022.04.27 19:01.10.824]  0 Launching match
-[2022.04.27 19:01.13.076]  0 Local connection
-[2022.04.27 19:01.13.077]  0 Match requested
-[2022.04.27 19:02.32.469]  0 Auto-update thread running
-[2022.04.27 19:02.32.477]  0 Assigned id: 1596950858
-[2022.04.27 19:02.32.477]  0 New id: 1596950858
-[2022.04.27 19:02.32.479]  0 Client done
-[2022.04.27 19:02.32.480]  0 Auto-update thread starting
+[2022.04.27 19:31.03.347]  0 ->- Loading .games UI extension point ->-
+[2022.04.27 19:31.03.347]  0   Loaded game UI: com.ibm.jc.coderally
+[2022.04.27 19:31.03.347]  0 -<- Done loading .games UI extension point -<-
+[2022.04.27 19:31.03.348]  0   Loaded image: com.ibm.jc.coderally
+[2022.04.27 19:31.04.878]  0 copyFile: L/Java Challenge/src/RallyCar.java
+[2022.04.27 19:31.06.137]  0   Loaded icon: com.ibm.jc.coderally

@@ -1,0 +1,4 @@
+eclipse.preferences.version=1
+game=com.ibm.jc.coderally
+serverHost=localhost
+serverPort=1234
