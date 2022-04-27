@@ -12,7 +12,7 @@ public class RallyCar extends Car {
 	 * @see com.ibm.rally.Car#getColor()
 	 */
 	public byte getColor() {
-		return CAR_BLUE;
+		return CAR_YELLOW;
 	}
 
 	/**
@@ -27,5 +27,7 @@ public class RallyCar extends Car {
 	 */
 	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
 		// put implementation here
+		setSteeringSetting(MAX_STEER_LEFT);
+		setThrottle(MAX_THROTTLE);
 	}
 }
