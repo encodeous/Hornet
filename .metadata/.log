@@ -1,0 +1,42 @@
+!SESSION 2022-04-27 10:34:39.258 -----------------------------------------------
+eclipse.buildId=4.3.2.M20140221-1700
+java.version=1.8.0_231
+java.vendor=Oracle Corporation
+BootLoader constants: OS=win32, ARCH=x86, WS=win32, NL=en_CA
+Framework arguments:  -product org.eclipse.epp.package.standard.product
+Command-line arguments:  -os win32 -ws win32 -arch x86 -product org.eclipse.epp.package.standard.product
+
+!ENTRY org.eclipse.equinox.p2.engine 4 4 2022-04-27 10:36:16.476
+!MESSAGE An error occurred while installing the items
+!SUBENTRY 1 org.eclipse.equinox.p2.engine 4 0 2022-04-27 10:36:16.476
+!MESSAGE session context was:(profile=epp.package.standard, phase=org.eclipse.equinox.internal.p2.engine.phases.Install, operand=null --> [R]com.ibm.jc 1.1.0.201210241435, action=org.eclipse.equinox.internal.p2.touchpoint.eclipse.actions.InstallBundleAction).
+!SUBENTRY 1 org.eclipse.equinox.p2.touchpoint.eclipse 4 0 2022-04-27 10:36:16.476
+!MESSAGE The artifact file for osgi.bundle,com.ibm.jc,1.1.0.201210241435 was not found.
+
+!ENTRY org.eclipse.egit.ui 2 0 2022-04-27 10:39:37.740
+!MESSAGE Warning: The environment variable HOME is not set. The following directory will be used to store the Git
+user global configuration and to define the default location to store repositories: 'C:\Users\Adam'. If this is
+not correct please set the HOME environment variable and restart Eclipse. Otherwise Git for Windows and
+EGit might behave differently since they see different configuration options.
+This warning can be switched off on the Team > Git > Confirmations and Warnings preference page.
+!SESSION 2022-04-27 18:49:13.078 -----------------------------------------------
+eclipse.buildId=4.3.2.M20140221-1700
+java.version=1.8.0_231
+java.vendor=Oracle Corporation
+BootLoader constants: OS=win32, ARCH=x86, WS=win32, NL=en_CA
+Framework arguments:  -product org.eclipse.epp.package.standard.product
+Command-line arguments:  -os win32 -ws win32 -arch x86 -product org.eclipse.epp.package.standard.product
+
+!ENTRY org.eclipse.equinox.p2.engine 4 4 2022-04-27 18:49:18.210
+!MESSAGE An error occurred while installing the items
+!SUBENTRY 1 org.eclipse.equinox.p2.engine 4 0 2022-04-27 18:49:18.210
+!MESSAGE session context was:(profile=epp.package.standard, phase=org.eclipse.equinox.internal.p2.engine.phases.Install, operand=null --> [R]com.ibm.jc 1.1.0.201210241435, action=org.eclipse.equinox.internal.p2.touchpoint.eclipse.actions.InstallBundleAction).
+!SUBENTRY 1 org.eclipse.equinox.p2.touchpoint.eclipse 4 0 2022-04-27 18:49:18.211
+!MESSAGE The artifact file for osgi.bundle,com.ibm.jc,1.1.0.201210241435 was not found.
+
+!ENTRY org.eclipse.egit.ui 2 0 2022-04-27 18:49:35.922
+!MESSAGE Warning: The environment variable HOME is not set. The following directory will be used to store the Git
+user global configuration and to define the default location to store repositories: 'C:\Users\Adam'. If this is
+not correct please set the HOME environment variable and restart Eclipse. Otherwise Git for Windows and
+EGit might behave differently since they see different configuration options.
+This warning can be switched off on the Team > Git > Confirmations and Warnings preference page.

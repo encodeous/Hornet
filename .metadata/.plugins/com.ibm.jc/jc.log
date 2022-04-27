@@ -1,0 +1,16 @@
+[2022.04.27 18:49.24.053] 0 ->- Loading .games extension point ->-
+[2022.04.27 18:49.24.060] 0   Loaded game: com.ibm.jc.coderally
+[2022.04.27 18:49.24.060] 0 -<- Done loading .games extension point -<-
+[2022.04.27 18:49.29.844] 0 ->- Loading .samples extension point ->-
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.NullTeam00
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Corners01
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Reverse02
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Right03
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.LeftReverse04
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.CrazyDriver05
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Figure8Driver06
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.HitWallDriver07
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.FuelHogDriver08
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.CheckpointDriver09
+[2022.04.27 18:49.29.844] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.SpareTireDriver10
+[2022.04.27 18:49.29.844] 0 -<- Done loading .samples extension point -<-
