@@ -1,0 +1,9 @@
+[2022.04.27 11:02.59.565] 0 ->- Loading .presentations extension point ->-
+[2022.04.27 11:02.59.566] 0   Loaded presentation: org.icpc_cli.presentation.core.blank
+[2022.04.27 11:02.59.566] 0   Loaded presentation: org.icpc_cli.presentation.core.green
+[2022.04.27 11:02.59.567] 0   Loaded presentation: org.icpc_cli.presentation.core.message
+[2022.04.27 11:02.59.567] 0   Loaded presentation: org.icpc_cli.presentation.core.message2
+[2022.04.27 11:02.59.567] 0   Loaded presentation: com.ibm.jc.coderally
+[2022.04.27 11:02.59.567] 0   Loaded presentation: com.ibm.jc.coderally.score
+[2022.04.27 11:02.59.567] 0   Loaded presentation: com.ibm.jc.coderally.splash
+[2022.04.27 11:02.59.567] 0 -<- Done loading .presentations extension point -<-
