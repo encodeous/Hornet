@@ -1,3 +1,37 @@
-[2022.04.27 19:31.03.337] 0 ->- Loading .games extension point ->-
-[2022.04.27 19:31.03.339] 0   Loaded game: com.ibm.jc.coderally
-[2022.04.27 19:31.03.339] 0 -<- Done loading .games extension point -<-
+[2022.04.27 19:33.50.076] 0 ->- Loading .games extension point ->-
+[2022.04.27 19:33.50.078] 0   Loaded game: com.ibm.jc.coderally
+[2022.04.27 19:33.50.078] 0 -<- Done loading .games extension point -<-
+[2022.04.27 19:33.59.623] 0 ->- Loading .samples extension point ->-
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.NullTeam00
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Corners01
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Reverse02
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Right03
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.LeftReverse04
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.CrazyDriver05
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.Figure8Driver06
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.HitWallDriver07
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.FuelHogDriver08
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.CheckpointDriver09
+[2022.04.27 19:33.59.624] 0   Loaded sample: com.ibm.jc.coderally.internal.samples.SpareTireDriver10
+[2022.04.27 19:33.59.624] 0 -<- Done loading .samples extension point -<-
+[2022.04.27 22:14.54.696] 0 Reading match - players: 1
+[2022.04.27 22:14.54.705] 0 Match entry types:
+[2022.04.27 22:14.54.706] 0   1 com.ibm.jc.entries.FloatTimeEntry
+[2022.04.27 22:14.54.706] 0   2 com.ibm.jc.ResultEntry
+[2022.04.27 22:14.54.706] 0   3 com.ibm.jc.ObjectRemovalEntry
+[2022.04.27 22:14.54.706] 0   4 com.ibm.jc.entries.PointResultEntry
+[2022.04.27 22:14.54.706] 0   7 com.ibm.jc.entries.ByteEventEntry
+[2022.04.27 22:14.54.706] 0   8 com.ibm.jc.entries.ByteObjectRemovalEntry
+[2022.04.27 22:14.54.706] 0   9 com.ibm.jc.coderally.internal.entries.TurnTimeEntry
+[2022.04.27 22:14.54.706] 0   10 com.ibm.jc.coderally.internal.entries.StaticEntry
+[2022.04.27 22:14.54.706] 0   11 com.ibm.jc.coderally.internal.entries.CarEntry
+[2022.04.27 22:14.54.706] 0   12 com.ibm.jc.coderally.internal.entries.OilSpillEntry
+[2022.04.27 22:14.54.706] 0   13 com.ibm.jc.coderally.internal.entries.SpareTireEntry
+[2022.04.27 22:14.54.707] 0   14 com.ibm.jc.coderally.internal.entries.RecordEntry
+[2022.04.27 22:17.40.894] 0 Reading match - players: 1
+[2022.04.27 22:21.17.914] 0 Reading match - players: 1
+[2022.04.27 22:31.37.705] 0 Reading match - players: 1
+[2022.04.27 22:32.53.893] 0 Reading match - players: 1
+[2022.04.27 22:34.20.825] 0 Reading match - players: 1
+[2022.04.27 22:36.14.637] 0 Reading match - players: 1
+[2022.04.27 22:38.33.800] 0 Reading match - players: 6

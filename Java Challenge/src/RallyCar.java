@@ -1,6 +1,8 @@
 import com.ibm.jc.JavaChallenge;
 import com.ibm.rally.Car;
 import com.ibm.rally.ICar;
+import com.ibm.rally.IObject;
+import com.ibm.rally.World;
 
 class Vec2d {
 	public static final Vec2d ZERO = new Vec2d(0, 0);
@@ -11,7 +13,7 @@ class Vec2d {
 	}
 	public static Vec2d ofPolar(double magnitude, double direction){
 		double radDir = direction / 180 * Math.PI;
-		return new Vec2d(magnitude * Math.cos(radDir), magnitude * Math.sin(radDir));
+		return new Vec2d(magnitude * Math.sin(radDir), -magnitude * Math.cos(radDir));
 	}
 	public Vec2d(Vec2d other){
 		this.x = other.x;
@@ -82,12 +84,46 @@ class Vec2d {
 	}
 
 	/**
-	 * Calculates the angle to a given point (assuming they are both originating from the origin)
-	 * @param otherPoint
-	 * @return the angle in degrees
+	 * Converts screen space coordinates to cartesian
+	 * @return
 	 */
-	public double getAngleTo(Vec2d otherPoint){
-		return 180 * Math.acos(this.dotProduct(otherPoint) / (magnitude() * otherPoint.magnitude())) / Math.PI;
+	public Vec2d toCartesian(){
+		return new Vec2d(-y, x);
+	}
+
+	public double crossProduct(Vec2d other){
+		return x * other.y - other.x * y;
+	}
+
+	/**
+	 * Gets the bearing of another point in relation to the current point
+	 * @param other
+	 * @return
+	 */
+	public double getAngleTo(Vec2d other){
+		Vec2d diff = other.subtract(this);
+		return diff.getDirection();
+	}
+
+	/**
+	 * Gets the angle of the current vector. North is 0 degrees
+	 * @return
+	 */
+	private double getUnitDirection(){
+		double ra = 180 * Math.acos(x) / Math.PI - 90;
+		if(x < 0){
+			if(y < 0){
+				return -ra;
+			}else{
+				return -180 + ra;
+			}
+		}else{
+			if(y < 0){
+				return -ra;
+			}else{
+				return 180 + ra;
+			}
+		}
 	}
 
 	/**
@@ -95,10 +131,17 @@ class Vec2d {
 	 * @return
 	 */
 	public double getDirection(){
-		return getAngleTo(NORTH);
+		return normalize().getUnitDirection();
 	}
-
 	public double x, y;
+
+	public static double getAngleDifference(double a1, double a2){
+		if(Math.abs(a1 - a2) < Math.abs(a1 - a2 - 360)){
+			return a1 - a2;
+		}else{
+			return a1 - a2 - 360;
+		}
+	}
 }
 
 /**
@@ -106,7 +149,7 @@ class Vec2d {
  * the CodeRally track. Adding code to these methods will give your car
  * it's personality and allow it to compete.
  */
-@JavaChallenge(name="Hornet",organization="Bees")
+@JavaChallenge(name="Hornet", organization="Bees")
 public class RallyCar extends Car {
 	/**
 	 * @see com.ibm.rally.Car#getColor()
@@ -115,21 +158,45 @@ public class RallyCar extends Car {
 		return CAR_YELLOW;
 	}
 
+	private int totalCheckpoints;
+	private int lastCheckpoint = 0;
+
 	/**
 	 * @see com.ibm.rally.Car#initialize()
 	 */
 	public void initialize() {
 		// put implementation here
+		totalCheckpoints = World.getCheckpoints().length;
 	}
+
 
 	/**
 	 * @see com.ibm.rally.Car#move(int, boolean, ICar, ICar)
 	 */
 	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
 		// put implementation here
-		setSteeringSetting(MAX_STEER_LEFT);
-		setThrottle(MAX_THROTTLE);
-		Vec2d cur = Vec2d.ofPolar(this.getSpeed(), this.getHeading());
-		System.out.println(cur.getDirection());
+		setThrottle(100);
+
+		if(getPreviousCheckpoint() == lastCheckpoint){
+			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
+		}
+		IObject chk = World.getCheckpoints()[lastCheckpoint];
+		Vec2d dep = new Vec2d(chk.getX(), chk.getY());
+		turnTo(dep);
+	}
+
+	public void turnTo(Vec2d pos){
+		Vec2d dirVector = Vec2d.ofPolar(1, this.getHeading());
+		Vec2d curPos = new Vec2d(getX(), getY());
+		double cHeading = dirVector.getDirection();
+		double angle = curPos.getAngleTo(pos);
+		double diff = Vec2d.getAngleDifference(cHeading, angle);
+		if(diff < -10){
+			setSteeringSetting(MAX_STEER_RIGHT);
+		}else if(diff > 10){
+			setSteeringSetting(MAX_STEER_LEFT);
+		}else{
+			setSteeringSetting(0);
+		}
 	}
 }
