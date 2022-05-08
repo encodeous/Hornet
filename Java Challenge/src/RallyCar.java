@@ -4,7 +4,9 @@ import com.ibm.rally.ICar;
 import com.ibm.rally.IObject;
 import com.ibm.rally.World;
 
-class Vec2d {
+import java.util.*;
+
+class Vec2d implements Comparable<Vec2d>{
 	public static final Vec2d ZERO = new Vec2d(0, 0);
 	public static final Vec2d NORTH = new Vec2d(0, -1);
 	public Vec2d(double x, double y) {
@@ -142,6 +144,60 @@ class Vec2d {
 			return a1 - a2 - 360;
 		}
 	}
+
+	public int compareTo(Vec2d o) {
+		if(x == o.x){
+			return Double.compare(y, o.y);
+		}
+		return Double.compare(x, o.x);
+	}
+}
+
+class Pair<T, V>{
+	public T x;
+	public V y;
+
+	public Pair(T x, V y) {
+		this.x = x;
+		this.y = y;
+	}
+}
+
+class CarPath{
+	public ArrayDeque<Vec2d> points = new ArrayDeque<>();
+
+	public static ArrayDeque<Vec2d> chaikinIter(double subdivideAmount, ArrayDeque<Vec2d> input){
+		ArrayDeque<Vec2d> output = new ArrayDeque<>();
+		Iterator<Vec2d> itr = input.iterator();
+		Vec2d prev = null;
+		output.add(input.getFirst());
+		while(itr.hasNext()){
+			if(prev == null){
+				prev = itr.next();
+			}
+			else{
+				Vec2d cur = itr.next();
+				double dist = cur.distanceTo(prev);
+				Vec2d dir = cur.subtract(prev).normalize();
+				output.add(prev.add(dir.multiply(dist * subdivideAmount)));
+				output.add(cur.add(dir.multiply(dist * -subdivideAmount)));
+				prev = cur;
+			}
+		}
+		output.add(input.getLast());
+		return output;
+	}
+}
+
+class PointComparator implements Comparator<Pair<Integer, Vec2d>>{
+
+	@Override
+	public int compare(Pair<Integer, Vec2d> o1, Pair<Integer, Vec2d> o2) {
+		if(o1.x.equals(o2.x)){
+			return o1.y.compareTo(o2.y);
+		}
+		return Integer.compare(o1.x, o2.x);
+	}
 }
 
 /**
@@ -160,6 +216,22 @@ public class RallyCar extends Car {
 
 	private int totalCheckpoints;
 	private int lastCheckpoint = 0;
+	public final static int MAX_X = 1010;
+	public final static int MAX_Y = 580;
+	public final static int BLOCK_SZ = 10;
+	private int getBlock(int dim){
+		return dim / BLOCK_SZ;
+	}
+	private Vec2d getLocation(IObject obj){
+		return new Vec2d(obj.getX(), obj.getY());
+	}
+	private Vec2d getBlockLocation(Vec2d mapLocation){
+		return new Vec2d(getBlock((int)mapLocation.x), getBlock((int)mapLocation.y));
+	}
+	private double[][] grid = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
+	private double[][] dist = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
+	private boolean[][] visited = new boolean[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
+	private Vec2d nextCheckpoint;
 
 	/**
 	 * @see com.ibm.rally.Car#initialize()
@@ -176,6 +248,7 @@ public class RallyCar extends Car {
 	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
 		// put implementation here
 		setThrottle(100);
+//		setSteeringSetting(MAX_STEER_RIGHT);
 
 		if(getPreviousCheckpoint() == lastCheckpoint){
 			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
@@ -183,11 +256,74 @@ public class RallyCar extends Car {
 		IObject chk = World.getCheckpoints()[lastCheckpoint];
 		Vec2d dep = new Vec2d(chk.getX(), chk.getY());
 		turnTo(dep);
+		System.out.println(getSpeed());
+	}
+
+	public double get(Vec2d block){
+		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y)
+			return Integer.MAX_VALUE;
+		return grid[(int)block.x][(int)block.y];
+	}
+
+	public void set(Vec2d block, double value){
+		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y) return;
+		grid[(int)block.x][(int)block.y] = value;
+	}
+
+	public void updateMap(){
+		for(double[] arr : grid){
+			Arrays.fill(arr, 0);
+		}
+		for(double[] arr : dist){
+			Arrays.fill(arr, 0);
+		}
+		for(boolean[] arr : visited){
+			Arrays.fill(arr, false);
+		}
+		for(ICar car : getOpponents()){
+			Vec2d pos = getLocation(car);
+			Vec2d block = getBlockLocation(pos);
+			for(int x = -3; x <= 3; x++){
+				for(int y = -3; y <= 3; y++){
+					Vec2d dVec = new Vec2d(x, y);
+					Vec2d nVec = dVec.add(block);
+					double distance = nVec.distanceTo(block);
+					if(distance < 3){
+						double weight = (3 - distance) / 3;
+						set(nVec, get(nVec) + weight);
+					}
+				}
+			}
+		}
+	}
+
+	public Vec2d getCurrentLocation(){
+		return new Vec2d(getX(), getY());
+	}
+
+	public Vec2d getCurrentDirection(){
+		return Vec2d.ofPolar(1, this.getHeading());
+	}
+
+	public Vec2d getPredictedLocation(){
+		return getCurrentLocation().add(getCurrentDirection().multiply(getSpeed()));
+	}
+
+	public CarPath getPathTo(Vec2d dest){
+		PriorityQueue<Pair<Integer, Vec2d>> pq = new PriorityQueue<>(new PointComparator());
+		CarPath path = new CarPath();
+		path.points.addLast(getCurrentLocation());
+		Vec2d start = getPredictedLocation();
+		pq.add(new Pair<>(0, start));
+		while(pq.size() != 0){
+			
+		}
+		return path;
 	}
 
 	public void turnTo(Vec2d pos){
-		Vec2d dirVector = Vec2d.ofPolar(1, this.getHeading());
-		Vec2d curPos = new Vec2d(getX(), getY());
+		Vec2d dirVector = getCurrentDirection();
+		Vec2d curPos = getCurrentLocation();
 		double cHeading = dirVector.getDirection();
 		double angle = curPos.getAngleTo(pos);
 		double diff = Vec2d.getAngleDifference(cHeading, angle);
