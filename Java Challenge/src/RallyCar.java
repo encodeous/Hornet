@@ -77,24 +77,11 @@ class Vec2d implements Comparable<Vec2d>{
 	}
 
 	/**
-	 * Calculates the dot product with another vector
-	 * @param other
-	 * @return
-	 */
-	public double dotProduct(Vec2d other){
-		return x * other.x + y * other.y;
-	}
-
-	/**
 	 * Converts screen space coordinates to cartesian
 	 * @return
 	 */
 	public Vec2d toCartesian(){
 		return new Vec2d(-y, x);
-	}
-
-	public double crossProduct(Vec2d other){
-		return x * other.y - other.x * y;
 	}
 
 	/**
@@ -138,10 +125,28 @@ class Vec2d implements Comparable<Vec2d>{
 	public double x, y;
 
 	public static double getAngleDifference(double a1, double a2){
-		if(Math.abs(a1 - a2) < Math.abs(a1 - a2 - 360)){
-			return a1 - a2;
+		if(a1 < 0 != a2 < 0){
+			double c1 = Math.abs(a1) + Math.abs(a2);
+			double c2 = 360 - Math.abs(a1) - Math.abs(a2);
+			if(c1 < c2){
+				if(a1 < a2){
+					return c1;
+				}else{
+					return -c1;
+				}
+			}else{
+				if(a1 > a2){
+					return c2;
+				}else{
+					return -c2;
+				}
+			}
 		}else{
-			return a1 - a2 - 360;
+			if(Math.abs(a1 - a2) < Math.abs(a2 - a1)){
+				return a1 - a2;
+			}else{
+				return a2 - a1;
+			}
 		}
 	}
 
@@ -165,6 +170,7 @@ class Pair<T, V>{
 
 class CarPath{
 	public ArrayDeque<Vec2d> points = new ArrayDeque<>();
+	public double length = 0;
 
 	public static ArrayDeque<Vec2d> chaikinIter(double subdivideAmount, ArrayDeque<Vec2d> input){
 		ArrayDeque<Vec2d> output = new ArrayDeque<>();
@@ -189,14 +195,75 @@ class CarPath{
 	}
 }
 
-class PointComparator implements Comparator<Pair<Integer, Vec2d>>{
+class PointComparator implements Comparator<Pair<Double, Vec2d>>{
 
 	@Override
-	public int compare(Pair<Integer, Vec2d> o1, Pair<Integer, Vec2d> o2) {
+	public int compare(Pair<Double, Vec2d> o1, Pair<Double, Vec2d> o2) {
 		if(o1.x.equals(o2.x)){
 			return o1.y.compareTo(o2.y);
 		}
-		return Integer.compare(o1.x, o2.x);
+		return Double.compare(o1.x, o2.x);
+	}
+}
+
+class RdpSimplifier{
+	public static double getDist(Vec2d ep1, Vec2d ep2, Vec2d pt){
+		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+		double dx1 = ep2.x - ep1.x;
+		double dy1 = ep2.y - ep1.y;
+		return Math.abs(dx1 * (ep1.y - pt.y) - (ep1.x - pt.x) * (dy1)) / Math.sqrt(dx1 * dx1 + dy1 * dy1);
+	}
+
+	public static ArrayDeque<Vec2d> simplify(double epsilon, ArrayDeque<Vec2d> input){
+		if(input.size() <= 1) return input;
+		Vec2d p1 = input.getFirst();
+		Vec2d p2 = input.getLast();
+		ArrayDeque<Vec2d> arr1 = new ArrayDeque<>();
+		ArrayDeque<Vec2d> arr2 = new ArrayDeque<>();
+		int idx = 0;
+		double md = 0;
+		int mdi = 0;
+		for(Vec2d point : input){
+			if(idx != 0 && idx != input.size() - 1){
+				double d = getDist(p1, p2, point);
+				if(d > md){
+					md = d;
+					mdi = idx;
+				}
+			}
+			idx++;
+		}
+		if(md < epsilon || input.size() == 2){
+			ArrayDeque<Vec2d> deq = new ArrayDeque<Vec2d>();
+			deq.add(p1);
+			deq.add(p2);
+			return deq;
+		}
+		idx = 0;
+		for(Vec2d point : input){
+			if(idx < mdi){
+				arr1.add(point);
+			}
+			else if(idx == mdi){
+				arr1.add(point);
+				arr2.add(point);
+			}
+			else{
+				arr2.add(point);
+			}
+			idx++;
+		}
+		ArrayDeque<Vec2d> ans = new ArrayDeque<Vec2d>();
+		ArrayDeque<Vec2d> a1 = simplify(epsilon, arr1);
+		a1.removeLast();
+		ArrayDeque<Vec2d> a2 = simplify(epsilon, arr2);
+		for(Vec2d k : a1){
+			ans.add(k);
+		}
+		for(Vec2d k : a2){
+			ans.add(k);
+		}
+		return ans;
 	}
 }
 
@@ -222,42 +289,29 @@ public class RallyCar extends Car {
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
+	private int getMap(int dim){
+		return dim * BLOCK_SZ;
+	}
 	private Vec2d getLocation(IObject obj){
 		return new Vec2d(obj.getX(), obj.getY());
 	}
 	private Vec2d getBlockLocation(Vec2d mapLocation){
 		return new Vec2d(getBlock((int)mapLocation.x), getBlock((int)mapLocation.y));
 	}
+	private Vec2d getMapLocation(Vec2d blockLocation){
+		return new Vec2d(getMap((int)blockLocation.x), getMap((int)blockLocation.y));
+	}
+	private double getValue(Vec2d pos, double[][] arr){
+		return arr[((int) pos.x)][((int) pos.y)];
+	}
+	private double setValue(Vec2d pos, double[][] arr, double val){
+		return arr[((int) pos.x)][((int) pos.y)] = val;
+	}
 	private double[][] grid = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
 	private double[][] dist = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
-	private boolean[][] visited = new boolean[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
+	private int[][] visit = new int[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
+	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
 	private Vec2d nextCheckpoint;
-
-	/**
-	 * @see com.ibm.rally.Car#initialize()
-	 */
-	public void initialize() {
-		// put implementation here
-		totalCheckpoints = World.getCheckpoints().length;
-	}
-
-
-	/**
-	 * @see com.ibm.rally.Car#move(int, boolean, ICar, ICar)
-	 */
-	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
-		// put implementation here
-		setThrottle(100);
-//		setSteeringSetting(MAX_STEER_RIGHT);
-
-		if(getPreviousCheckpoint() == lastCheckpoint){
-			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
-		}
-		IObject chk = World.getCheckpoints()[lastCheckpoint];
-		Vec2d dep = new Vec2d(chk.getX(), chk.getY());
-		turnTo(dep);
-		System.out.println(getSpeed());
-	}
 
 	public double get(Vec2d block){
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y)
@@ -275,10 +329,13 @@ public class RallyCar extends Car {
 			Arrays.fill(arr, 0);
 		}
 		for(double[] arr : dist){
+			Arrays.fill(arr, Double.MAX_VALUE / 10);
+		}
+		for(int[] arr : visit){
 			Arrays.fill(arr, 0);
 		}
-		for(boolean[] arr : visited){
-			Arrays.fill(arr, false);
+		for(Vec2d[] arr : prev){
+			Arrays.fill(arr, null);
 		}
 		for(ICar car : getOpponents()){
 			Vec2d pos = getLocation(car);
@@ -288,8 +345,8 @@ public class RallyCar extends Car {
 					Vec2d dVec = new Vec2d(x, y);
 					Vec2d nVec = dVec.add(block);
 					double distance = nVec.distanceTo(block);
-					if(distance < 3){
-						double weight = (3 - distance) / 3;
+					if(distance < 5){
+						double weight = (5 - distance) * 10;
 						set(nVec, get(nVec) + weight);
 					}
 				}
@@ -306,33 +363,133 @@ public class RallyCar extends Car {
 	}
 
 	public Vec2d getPredictedLocation(){
-		return getCurrentLocation().add(getCurrentDirection().multiply(getSpeed()));
+		Vec2d loc = getCurrentLocation().add(getCurrentDirection().multiply(getSpeed() + 5));
+		if(loc.x < 0 || loc.y < 0 || loc.x >= MAX_X || loc.y >= MAX_Y){
+			return getCurrentLocation();
+		}
+		return loc;
 	}
 
+	private static final int[] mvarr = new int[]{1, -1, 0, 0, -1, -1, 1, 1};
+	private static final int[] mvarrc = new int[]{0, 0, 1, -1, -1, 1, -1, 1};
 	public CarPath getPathTo(Vec2d dest){
-		PriorityQueue<Pair<Integer, Vec2d>> pq = new PriorityQueue<>(new PointComparator());
-		CarPath path = new CarPath();
-		path.points.addLast(getCurrentLocation());
-		Vec2d start = getPredictedLocation();
-		pq.add(new Pair<>(0, start));
+		PriorityQueue<Pair<Double, Vec2d>> pq = new PriorityQueue<>(new PointComparator());
+		Vec2d start = getBlockLocation(getPredictedLocation());
+		pq.add(new Pair<>(0d, start));
 		while(pq.size() != 0){
-			
+			Pair<Double, Vec2d> v = pq.poll();
+			if(v.x > getValue(v.y, dist)) continue;
+			setValue(v.y, dist, v.x);
+			for(int i = 0; i < 8; i++){
+				Vec2d nPos = v.y.add(new Vec2d(mvarr[i], mvarrc[i]));
+				if(nPos.x >= 0 && nPos.x <= (MAX_X / BLOCK_SZ) && nPos.y >= 0 && nPos.y <= (MAX_Y / BLOCK_SZ)){
+					double weight = getValue(nPos, grid) + v.x + (i < 4 ? 1 : 1.4);
+					if(weight < getValue(nPos, dist)){
+						setValue(nPos, dist, weight);
+						prev[(int)nPos.x][(int)nPos.y] = v.y;
+						pq.add(new Pair<>(weight, nPos));
+					}
+				}
+			}
 		}
+		Vec2d prevVal = prev[getBlock((int)dest.x)][getBlock((int)dest.y)];
+		if(prevVal == null) return null;
+		CarPath path = new CarPath();
+		while(prevVal != null){
+			Vec2d curPt = getMapLocation(prevVal);
+			visit[(int)prevVal.x][(int)prevVal.y] = 1;
+			prevVal = prev[(int)prevVal.x][(int)prevVal.y];
+			if(prevVal != null){
+				Vec2d prevPt = getMapLocation(prevVal);
+				path.length += prevPt.distanceTo(curPt);
+			}
+			path.points.addLast(curPt);
+		}
+		visit[getBlock((int)dest.x)][getBlock((int)dest.y)] = 2;
+
+		path.points = RdpSimplifier.simplify(15, path.points);
+		for(Vec2d pt : path.points){
+			visit[getBlock((int)pt.x)][getBlock((int)pt.y)] = 4;
+		}
+		visit[(int)start.x][(int)start.y] = 3;
 		return path;
 	}
 
-	public void turnTo(Vec2d pos){
+	private double adjustedDriveThrottle(double x, double steeringMag){
+		// https://www.desmos.com/calculator/gflge44xrw
+		// just a function that i made that *looks* good enough
+		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
+	}
+
+	private double adjustedDriveFunction(double x){
+		// https://www.desmos.com/calculator/8ognwcjnjf
+		// just another function that i made that *looks* good enough
+		return (Math.pow(x * 40, 0.4) - 1 / 20.0 * x) / 3.0;
+	}
+
+	public void driveTowards(Vec2d pos, double dist){
 		Vec2d dirVector = getCurrentDirection();
 		Vec2d curPos = getCurrentLocation();
 		double cHeading = dirVector.getDirection();
 		double angle = curPos.getAngleTo(pos);
 		double diff = Vec2d.getAngleDifference(cHeading, angle);
-		if(diff < -10){
-			setSteeringSetting(MAX_STEER_RIGHT);
-		}else if(diff > 10){
-			setSteeringSetting(MAX_STEER_LEFT);
-		}else{
-			setSteeringSetting(0);
+
+		double steerMag = Math.abs(diff);
+		double steerDir = diff / steerMag;
+
+		double realSteerAmount = adjustedDriveFunction(steerMag) * steerDir;
+		setSteeringSetting((int) realSteerAmount);
+		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
+		setThrottle((int) adjustedDriveThrottle(dist, steerMag));
+		System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
+	}
+
+
+	/**
+	 * @see com.ibm.rally.Car#initialize()
+	 */
+	public void initialize() {
+		// put implementation here
+		totalCheckpoints = World.getCheckpoints().length;
+	}
+
+
+	/**
+	 * @see com.ibm.rally.Car#move(int, boolean, ICar, ICar)
+	 */
+	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
+		// put implementation here
+
+		updateMap();
+		if(getPreviousCheckpoint() == lastCheckpoint){
+			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
 		}
+		IObject chk = World.getCheckpoints()[lastCheckpoint];
+		System.out.println("Goal: " + lastCheckpoint);
+		Vec2d dep = new Vec2d(chk.getX(), chk.getY());
+		CarPath path = getPathTo(dep);
+		if(path == null) return;
+		driveTowards(path.points.peekFirst(), path.length);
+//		System.out.println(getSpeed());
+//		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
+//			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
+////				if(visit[j][i] == 1){
+////					System.out.print("X");
+////				}
+//				if(visit[j][i] == 4){
+//					System.out.print("X");
+//				}
+//				if(visit[j][i] == 2){
+//					System.out.print("D");
+//				}
+//				if(visit[j][i] == 3){
+//					System.out.print("S");
+//				}
+//				else{
+//					System.out.print(".");
+//				}
+//			}
+//			System.out.println();
+//		}
 	}
 }
