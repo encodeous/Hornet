@@ -171,6 +171,8 @@ class Pair<T, V>{
 class CarPath{
 	public ArrayDeque<Vec2d> points = new ArrayDeque<>();
 	public double length = 0;
+	public double weight = 0;
+	public Vec2d destination;
 
 	public static ArrayDeque<Vec2d> chaikinIter(double subdivideAmount, ArrayDeque<Vec2d> input){
 		ArrayDeque<Vec2d> output = new ArrayDeque<>();
@@ -307,11 +309,10 @@ public class RallyCar extends Car {
 	private double setValue(Vec2d pos, double[][] arr, double val){
 		return arr[((int) pos.x)][((int) pos.y)] = val;
 	}
-	private double[][] grid = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
-	private double[][] dist = new double[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
-	private int[][] visit = new int[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
-	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 1][getBlock(MAX_Y) + 1];
-	private Vec2d nextCheckpoint;
+	private double[][] grid = new double[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
+	private double[][] dist = new double[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
+	private int[][] visit = new int[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
+	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
 
 	public double get(Vec2d block){
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y)
@@ -337,6 +338,17 @@ public class RallyCar extends Car {
 		for(Vec2d[] arr : prev){
 			Arrays.fill(arr, null);
 		}
+		for(int q = 0; q < 10; q++){
+			for(int i = q; i <= getBlock(MAX_X) - q; i++){
+				grid[i][q] += 10 - q;
+				grid[i][getBlock(MAX_X) - q] += 10 - q;
+			}
+			for(int j = q; j <= getBlock(MAX_Y) - q; j++){
+				grid[q][j] += 10 - q;
+				grid[getBlock(MAX_Y) - q][j] += 10 - q;
+			}
+		}
+
 		for(ICar car : getOpponents()){
 			Vec2d pos = getLocation(car);
 			Vec2d block = getBlockLocation(pos);
@@ -362,11 +374,13 @@ public class RallyCar extends Car {
 		return Vec2d.ofPolar(1, this.getHeading());
 	}
 
+	public boolean isInMap(Vec2d loc){
+		return !(loc.x < 0) && !(loc.y < 0) && !(loc.x >= MAX_X) && !(loc.y >= MAX_Y);
+	}
+
 	public Vec2d getPredictedLocation(){
-		Vec2d loc = getCurrentLocation().add(getCurrentDirection().multiply(getSpeed() + 5));
-		if(loc.x < 0 || loc.y < 0 || loc.x >= MAX_X || loc.y >= MAX_Y){
-			return getCurrentLocation();
-		}
+		Vec2d loc = getCurrentLocation().add(getCurrentDirection().multiply(getSpeed() + 10));
+		if(!isInMap(loc)) return getCurrentLocation();
 		return loc;
 	}
 
@@ -395,6 +409,8 @@ public class RallyCar extends Car {
 		Vec2d prevVal = prev[getBlock((int)dest.x)][getBlock((int)dest.y)];
 		if(prevVal == null) return null;
 		CarPath path = new CarPath();
+		path.destination = dest;
+		path.weight = getValue(prevVal, dist);
 		while(prevVal != null){
 			Vec2d curPt = getMapLocation(prevVal);
 			visit[(int)prevVal.x][(int)prevVal.y] = 1;
@@ -421,7 +437,7 @@ public class RallyCar extends Car {
 		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
 	}
 
-	private double adjustedDriveFunction(double x){
+	private double adjustedSteerFunction(double x){
 		// https://www.desmos.com/calculator/8ognwcjnjf
 		// just another function that i made that *looks* good enough
 		return (Math.pow(x * 40, 0.4) - 1 / 20.0 * x) / 3.0;
@@ -437,7 +453,7 @@ public class RallyCar extends Car {
 		double steerMag = Math.abs(diff);
 		double steerDir = diff / steerMag;
 
-		double realSteerAmount = adjustedDriveFunction(steerMag) * steerDir;
+		double realSteerAmount = adjustedSteerFunction(steerMag) * steerDir;
 		setSteeringSetting((int) realSteerAmount);
 		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
 		setThrottle((int) adjustedDriveThrottle(dist, steerMag));
@@ -453,6 +469,45 @@ public class RallyCar extends Car {
 		totalCheckpoints = World.getCheckpoints().length;
 	}
 
+	private boolean isRefueling = false;
+
+	public CarPath getOptimalGoal(){
+		IObject[] checkpoints = World.getCheckpoints();
+		IObject[] fuelDepots = World.getFuelDepots();
+		IObject[] tireDepots = World.getSpareTireDepots();
+
+		Vec2d currentPos = getCurrentLocation();
+
+		if(isRefueling){
+			if(getFuel() >= 90){
+				isRefueling = false;
+			}else{
+				return null;
+			}
+		}
+		if(getFuel() <= 25){
+			CarPath bestDepot = null;
+			for(IObject depot : fuelDepots){
+				Vec2d pos = getLocation(depot);
+				CarPath path = getPathTo(pos);
+				if(bestDepot == null || path.weight < bestDepot.weight){
+					bestDepot = path;
+				}
+			}
+			double dist = currentPos.distanceTo(bestDepot.destination);
+			if(dist <= 10){
+				isRefueling = true;
+				return null;
+			}
+			return bestDepot;
+		}
+
+		int bestCheckpoint = -1;
+		for(int i = 0; i < checkpoints.length; i++){
+			IObject chk = checkpoints[i];
+
+		}
+	}
 
 	/**
 	 * @see com.ibm.rally.Car#move(int, boolean, ICar, ICar)
@@ -461,13 +516,18 @@ public class RallyCar extends Car {
 		// put implementation here
 
 		updateMap();
-		if(getPreviousCheckpoint() == lastCheckpoint){
+		if(getPreviousCheckpoint() >= lastCheckpoint){
 			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
 		}
-		IObject chk = World.getCheckpoints()[lastCheckpoint];
-		System.out.println("Goal: " + lastCheckpoint);
-		Vec2d dep = new Vec2d(chk.getX(), chk.getY());
-		CarPath path = getPathTo(dep);
+
+//		if(getValue(getCurrentLocation(), grid) >= 5){
+//			if(!this.isInProtectMode()){
+//				// protect! an unwanted object is near us
+//				enterProtectMode();
+//			}
+//		}
+
+		CarPath path = getOptimalGoal();
 		if(path == null) return;
 		driveTowards(path.points.peekFirst(), path.length);
 //		System.out.println(getSpeed());
