@@ -308,7 +308,7 @@ public class RallyCar extends Car {
 	public final static int MAX_X = 1010;
 	public final static int MAX_Y = 580;
 	public final static int BLOCK_SZ = 10;
-	public final static int ENEMY_RANGE = 12;
+	public final static int ENEMY_RANGE = 11;
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
@@ -493,7 +493,7 @@ public class RallyCar extends Car {
 	 */
 	public void initialize() {
 		// put implementation here
-		totalCheckpoints = World.getCheckpoints().length;
+		totalCheckpoints = World.getCheckpoints().length - 1;
 	}
 
 	private boolean isRefueling = false;
@@ -524,7 +524,7 @@ public class RallyCar extends Car {
 				}
 			}
 			double dist = currentPos.distanceTo(bestDepot.destination);
-			if(dist <= 50){
+			if(dist <= 47){
 				isRefueling = true;
 				setThrottle(0);
 				return null;
@@ -541,8 +541,7 @@ public class RallyCar extends Car {
 			if(prevCheckpoints.contains(i)) continue;
 			CarPath path = getPathTo(pos);
 			if(path == null) continue;
-			double weight = (i + 1) == goalCheckpoint ? -400 : 0;
-			if(i == getPreviousCheckpoint()) continue;
+			double weight = i == goalCheckpoint ? -400 : 0;
 			weight += path.weight;
 			if(weight <= bestCheckpoint){
 				bestCheckpoint = weight;
@@ -551,7 +550,7 @@ public class RallyCar extends Car {
 			}
 		}
 		if (bestCheckpointPath != null) {
-//			System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
+			System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
 		}
 		return bestCheckpointPath;
 	}
