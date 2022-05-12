@@ -156,6 +156,14 @@ class Vec2d implements Comparable<Vec2d>{
 		}
 		return Double.compare(x, o.x);
 	}
+
+	@Override
+	public String toString() {
+		return "Vec2d{" +
+				"x=" + x +
+				", y=" + y +
+				'}';
+	}
 }
 
 class Pair<T, V>{
@@ -194,6 +202,16 @@ class CarPath{
 		}
 		output.add(input.getLast());
 		return output;
+	}
+
+	@Override
+	public String toString() {
+		return "CarPath{" +
+				"points=" + points +
+				", length=" + length +
+				", weight=" + weight +
+				", destination=" + destination +
+				'}';
 	}
 }
 
@@ -284,10 +302,13 @@ public class RallyCar extends Car {
 	}
 
 	private int totalCheckpoints;
-	private int lastCheckpoint = 0;
+	private int goalCheckpoint = 0;
+	private int prevCheckpoint = -1;
+	private int targetCheckpoint = 0;
 	public final static int MAX_X = 1010;
 	public final static int MAX_Y = 580;
 	public final static int BLOCK_SZ = 10;
+	public final static int ENEMY_RANGE = 12;
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
@@ -309,11 +330,12 @@ public class RallyCar extends Car {
 	private double setValue(Vec2d pos, double[][] arr, double val){
 		return arr[((int) pos.x)][((int) pos.y)] = val;
 	}
-	private double[][] grid = new double[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
-	private double[][] dist = new double[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
-	private int[][] visit = new int[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
-	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 10][getBlock(MAX_Y) + 10];
+	private double[][] grid = new double[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
+	private double[][] dist = new double[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
+	private int[][] visit = new int[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
+	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
 
+	private ArrayDeque<Integer> prevCheckpoints = new ArrayDeque<>();
 	public double get(Vec2d block){
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y)
 			return Integer.MAX_VALUE;
@@ -338,28 +360,27 @@ public class RallyCar extends Car {
 		for(Vec2d[] arr : prev){
 			Arrays.fill(arr, null);
 		}
-		for(int q = 0; q < 10; q++){
+		for(int q = 0; q < 2; q++){
 			for(int i = q; i <= getBlock(MAX_X) - q; i++){
 				grid[i][q] += 10 - q;
-				grid[i][getBlock(MAX_X) - q] += 10 - q;
+				grid[i][getBlock(MAX_Y) - q] += 10 - q;
 			}
 			for(int j = q; j <= getBlock(MAX_Y) - q; j++){
 				grid[q][j] += 10 - q;
-				grid[getBlock(MAX_Y) - q][j] += 10 - q;
+				grid[getBlock(MAX_X) - q][j] += 10 - q;
 			}
 		}
 
 		for(ICar car : getOpponents()){
 			Vec2d pos = getLocation(car);
 			Vec2d block = getBlockLocation(pos);
-			for(int x = -3; x <= 3; x++){
-				for(int y = -3; y <= 3; y++){
+			for(int x = -ENEMY_RANGE; x <= ENEMY_RANGE; x++){
+				for(int y = -ENEMY_RANGE; y <= ENEMY_RANGE; y++){
 					Vec2d dVec = new Vec2d(x, y);
 					Vec2d nVec = dVec.add(block);
 					double distance = nVec.distanceTo(block);
-					if(distance < 5){
-						double weight = (5 - distance) * 10;
-						set(nVec, get(nVec) + weight);
+					if(distance <= ENEMY_RANGE){
+						set(nVec, get(nVec) + 500);
 					}
 				}
 			}
@@ -387,6 +408,12 @@ public class RallyCar extends Car {
 	private static final int[] mvarr = new int[]{1, -1, 0, 0, -1, -1, 1, 1};
 	private static final int[] mvarrc = new int[]{0, 0, 1, -1, -1, 1, -1, 1};
 	public CarPath getPathTo(Vec2d dest){
+		for(double[] arr : dist){
+			Arrays.fill(arr, Double.MAX_VALUE / 10);
+		}
+		for(int[] arr : visit){
+			Arrays.fill(arr, 0);
+		}
 		PriorityQueue<Pair<Double, Vec2d>> pq = new PriorityQueue<>(new PointComparator());
 		Vec2d start = getBlockLocation(getPredictedLocation());
 		pq.add(new Pair<>(0d, start));
@@ -455,9 +482,9 @@ public class RallyCar extends Car {
 
 		double realSteerAmount = adjustedSteerFunction(steerMag) * steerDir;
 		setSteeringSetting((int) realSteerAmount);
-		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
+//		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
 		setThrottle((int) adjustedDriveThrottle(dist, steerMag));
-		System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
+//		System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
 	}
 
 
@@ -479,34 +506,54 @@ public class RallyCar extends Car {
 		Vec2d currentPos = getCurrentLocation();
 
 		if(isRefueling){
-			if(getFuel() >= 90){
+			if(getFuel() >= 70){
 				isRefueling = false;
 			}else{
 				return null;
 			}
 		}
 		if(getFuel() <= 25){
+			System.out.println("refueling");
 			CarPath bestDepot = null;
 			for(IObject depot : fuelDepots){
 				Vec2d pos = getLocation(depot);
 				CarPath path = getPathTo(pos);
+				if(path == null) continue;
 				if(bestDepot == null || path.weight < bestDepot.weight){
 					bestDepot = path;
 				}
 			}
 			double dist = currentPos.distanceTo(bestDepot.destination);
-			if(dist <= 10){
+			if(dist <= 50){
 				isRefueling = true;
+				setThrottle(0);
 				return null;
 			}
 			return bestDepot;
 		}
 
-		int bestCheckpoint = -1;
+		double bestCheckpoint = Double.MAX_VALUE;
+		CarPath bestCheckpointPath = null;
+		int goingto = -1;
 		for(int i = 0; i < checkpoints.length; i++){
 			IObject chk = checkpoints[i];
-
+			Vec2d pos = getLocation(chk);
+			if(prevCheckpoints.contains(i)) continue;
+			CarPath path = getPathTo(pos);
+			if(path == null) continue;
+			double weight = (i + 1) == goalCheckpoint ? -400 : 0;
+			if(i == getPreviousCheckpoint()) continue;
+			weight += path.weight;
+			if(weight <= bestCheckpoint){
+				bestCheckpoint = weight;
+				bestCheckpointPath = path;
+				goingto = i;
+			}
 		}
+		if (bestCheckpointPath != null) {
+//			System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
+		}
+		return bestCheckpointPath;
 	}
 
 	/**
@@ -516,16 +563,19 @@ public class RallyCar extends Car {
 		// put implementation here
 
 		updateMap();
-		if(getPreviousCheckpoint() >= lastCheckpoint){
-			lastCheckpoint = (lastCheckpoint + 1) % totalCheckpoints;
+		if(getPreviousCheckpoint() != prevCheckpoint){
+			prevCheckpoint = getPreviousCheckpoint();
+			prevCheckpoints.addLast(prevCheckpoint - 1);
+			while(prevCheckpoints.size() >= 4) prevCheckpoints.removeFirst();
+			goalCheckpoint = (getPreviousCheckpoint()) % totalCheckpoints + 1;
 		}
 
-//		if(getValue(getCurrentLocation(), grid) >= 5){
-//			if(!this.isInProtectMode()){
-//				// protect! an unwanted object is near us
-//				enterProtectMode();
-//			}
-//		}
+		if(getValue(getBlockLocation(getCurrentLocation()), grid) >= 5 && !isRefueling){
+			if(!this.isInProtectMode()){
+				// protect! an unwanted object is near us
+				enterProtectMode();
+			}
+		}
 
 		CarPath path = getOptimalGoal();
 		if(path == null) return;
