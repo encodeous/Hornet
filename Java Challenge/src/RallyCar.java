@@ -380,7 +380,7 @@ public class RallyCar extends Car {
 					Vec2d nVec = dVec.add(block);
 					double distance = nVec.distanceTo(block);
 					if(distance <= ENEMY_RANGE){
-						set(nVec, get(nVec) + 500);
+						set(nVec, get(nVec) + 500 + (ENEMY_RANGE - distance) * 500);
 					}
 				}
 			}
@@ -400,7 +400,9 @@ public class RallyCar extends Car {
 	}
 
 	public Vec2d getPredictedLocation(){
-		Vec2d loc = getCurrentLocation().add(getCurrentDirection().multiply(getSpeed() + 10));
+		int scalar = 1;
+		if(getThrottle() < 0) scalar = -1;
+		Vec2d loc = getCurrentLocation().add(getCurrentDirection().multiply(scalar * (getSpeed() + 10)));
 		if(!isInMap(loc)) return getCurrentLocation();
 		return loc;
 	}
@@ -476,14 +478,22 @@ public class RallyCar extends Car {
 		double cHeading = dirVector.getDirection();
 		double angle = curPos.getAngleTo(pos);
 		double diff = Vec2d.getAngleDifference(cHeading, angle);
+		int reverseCoeff = 1;
+		if(Math.abs(diff) >= 110){
+			// reverse
+			cHeading = dirVector.multiply(-1).getDirection();
+			angle = curPos.getAngleTo(pos);
+			diff = Vec2d.getAngleDifference(cHeading, angle);
+			reverseCoeff = -1;
+		}
 
 		double steerMag = Math.abs(diff);
-		double steerDir = diff / steerMag;
+		double steerDir = reverseCoeff * diff / steerMag;
 
 		double realSteerAmount = adjustedSteerFunction(steerMag) * steerDir;
 		setSteeringSetting((int) realSteerAmount);
 //		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
-		setThrottle((int) adjustedDriveThrottle(dist, steerMag));
+		setThrottle(reverseCoeff * (int) adjustedDriveThrottle(dist, steerMag));
 //		System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
 	}
 
@@ -493,7 +503,7 @@ public class RallyCar extends Car {
 	 */
 	public void initialize() {
 		// put implementation here
-		totalCheckpoints = World.getCheckpoints().length - 1;
+		totalCheckpoints = World.getCheckpoints().length;
 	}
 
 	private boolean isRefueling = false;
@@ -524,7 +534,7 @@ public class RallyCar extends Car {
 				}
 			}
 			double dist = currentPos.distanceTo(bestDepot.destination);
-			if(dist <= 47){
+			if(dist <= 52){
 				isRefueling = true;
 				setThrottle(0);
 				return null;
@@ -563,10 +573,11 @@ public class RallyCar extends Car {
 
 		updateMap();
 		if(getPreviousCheckpoint() != prevCheckpoint){
+			prevCheckpoints.addLast(goalCheckpoint);
 			prevCheckpoint = getPreviousCheckpoint();
-			prevCheckpoints.addLast(prevCheckpoint - 1);
+			prevCheckpoints.addLast(prevCheckpoint);
 			while(prevCheckpoints.size() >= 4) prevCheckpoints.removeFirst();
-			goalCheckpoint = (getPreviousCheckpoint()) % totalCheckpoints + 1;
+			goalCheckpoint = (getPreviousCheckpoint() + 1) % totalCheckpoints;
 		}
 
 		if(getValue(getBlockLocation(getCurrentLocation()), grid) >= 5 && !isRefueling){
@@ -579,7 +590,7 @@ public class RallyCar extends Car {
 		CarPath path = getOptimalGoal();
 		if(path == null) return;
 		driveTowards(path.points.peekFirst(), path.length);
-//		System.out.println(getSpeed());
+		System.out.println(getSpeed());
 //		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
 //			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
 ////				if(visit[j][i] == 1){
