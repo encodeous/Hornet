@@ -164,6 +164,13 @@ class Vec2d implements Comparable<Vec2d>{
 				", y=" + y +
 				'}';
 	}
+
+	public static double getLineDist(Vec2d ep1, Vec2d ep2, Vec2d pt){
+		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+		double dx1 = ep2.x - ep1.x;
+		double dy1 = ep2.y - ep1.y;
+		return Math.abs(dx1 * (ep1.y - pt.y) - (ep1.x - pt.x) * (dy1)) / Math.sqrt(dx1 * dx1 + dy1 * dy1);
+	}
 }
 
 class Pair<T, V>{
@@ -227,12 +234,6 @@ class PointComparator implements Comparator<Pair<Double, Vec2d>>{
 }
 
 class RdpSimplifier{
-	public static double getDist(Vec2d ep1, Vec2d ep2, Vec2d pt){
-		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-		double dx1 = ep2.x - ep1.x;
-		double dy1 = ep2.y - ep1.y;
-		return Math.abs(dx1 * (ep1.y - pt.y) - (ep1.x - pt.x) * (dy1)) / Math.sqrt(dx1 * dx1 + dy1 * dy1);
-	}
 
 	public static ArrayDeque<Vec2d> simplify(double epsilon, ArrayDeque<Vec2d> input){
 		if(input.size() <= 1) return input;
@@ -245,7 +246,7 @@ class RdpSimplifier{
 		int mdi = 0;
 		for(Vec2d point : input){
 			if(idx != 0 && idx != input.size() - 1){
-				double d = getDist(p1, p2, point);
+				double d = Vec2d.getLineDist(p1, p2, point);
 				if(d > md){
 					md = d;
 					mdi = idx;
@@ -308,7 +309,10 @@ public class RallyCar extends Car {
 	public final static int MAX_X = 1010;
 	public final static int MAX_Y = 580;
 	public final static int BLOCK_SZ = 10;
-	public final static int ENEMY_RANGE = 7;
+	public final static int TRACK_ENEMY_RANGE = 25;
+	public final static int ENEMY_BASE_DIRECTIONAL_RANGE = 4;
+	public final static int TRACE_POINTS = 5;
+	public final static int ENEMY_RADIAL_RANGE = 9;
 	public final static int TURN_RADIUS = 50;
 	public final static int TURN_ANGLE = 35;
 	private int getBlock(int dim){
@@ -377,13 +381,24 @@ public class RallyCar extends Car {
 		for(ICar car : getOpponents()){
 			Vec2d pos = getLocation(car);
 			Vec2d block = getBlockLocation(pos);
-			for(int x = -ENEMY_RANGE; x <= ENEMY_RANGE; x++){
-				for(int y = -ENEMY_RANGE; y <= ENEMY_RANGE; y++){
+			Vec2d dir = Vec2d.ofPolar(1, car.getHeading());
+			ArrayList<Vec2d> rayTracer = new ArrayList<>();
+			rayTracer.add(block);
+			rayTracer.add(block.add(dir.multiply(2)));
+			rayTracer.add(block.subtract(dir.multiply(2)));
+			for(int i = 1; i <= TRACE_POINTS; i++){
+				double pct = car.getSpeed() * ((double)i / TRACE_POINTS) * ENEMY_BASE_DIRECTIONAL_RANGE;
+				rayTracer.add(block.add(dir.multiply(pct)));
+			}
+			for(int x = -TRACK_ENEMY_RANGE; x <= TRACK_ENEMY_RANGE; x++){
+				for(int y = -TRACK_ENEMY_RANGE; y <= TRACK_ENEMY_RANGE; y++){
 					Vec2d dVec = new Vec2d(x, y);
 					Vec2d nVec = dVec.add(block);
-					double distance = nVec.distanceTo(block);
-					if(distance <= ENEMY_RANGE){
-						set(nVec, get(nVec) + 500 + (ENEMY_RANGE - distance) * 500);
+					for(int i = 0; i < rayTracer.size(); i++){
+						double distance = rayTracer.get(i).distanceTo(nVec);
+						if(distance <= ENEMY_RADIAL_RANGE){
+							set(nVec, 500 + (ENEMY_RADIAL_RANGE - distance) * 500);
+						}
 					}
 				}
 			}
@@ -466,8 +481,8 @@ public class RallyCar extends Car {
 	private double adjustedDriveThrottle(double x, double steeringMag){
 		// https://www.desmos.com/calculator/gflge44xrw
 		// just a function that i made that *looks* good enough
-//		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
-		return 100;
+		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
+//		return 100;
 	}
 
 	private double adjustedSteerFunction(double x){
@@ -531,6 +546,7 @@ public class RallyCar extends Car {
 	}
 
 	private boolean isRefueling = false;
+	private boolean beginRefueling = false;
 
 	public CarPath getOptimalGoal(){
 		IObject[] checkpoints = World.getCheckpoints();
@@ -546,7 +562,8 @@ public class RallyCar extends Car {
 				return null;
 			}
 		}
-		if(getFuel() <= 25){
+		if(getFuel() <= 25 || beginRefueling){
+			beginRefueling = true;
 			if(DEBUG) System.out.println("refueling");
 			CarPath bestDepot = null;
 			for(IObject depot : fuelDepots){
@@ -558,7 +575,8 @@ public class RallyCar extends Car {
 				}
 			}
 			double dist = currentPos.distanceTo(bestDepot.destination);
-			if(dist <= 52){
+			if(dist <= (getSpeed() * 1.3) || dist <= 35){
+				beginRefueling = false;
 				isRefueling = true;
 				setThrottle(0);
 				return null;
@@ -620,20 +638,21 @@ public class RallyCar extends Car {
 		if(path == null) return;
 		driveTowards(path.points.peekFirst(), path.length);
 		if(DEBUG) System.out.println(getSpeed());
+		// printing out the grid causes the car to lag!
 //		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
 //			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
 ////				if(visit[j][i] == 1){
 ////					System.out.print("X");
 ////				}
-//				if(visit[j][i] == 4){
+//				if(grid[j][i] != 0){
 //					System.out.print("X");
 //				}
-//				if(visit[j][i] == 2){
-//					System.out.print("D");
-//				}
-//				if(visit[j][i] == 3){
-//					System.out.print("S");
-//				}
+////				if(visit[j][i] == 2){
+////					System.out.print("D");
+////				}
+////				if(visit[j][i] == 3){
+////					System.out.print("S");
+////				}
 //				else{
 //					System.out.print(".");
 //				}
