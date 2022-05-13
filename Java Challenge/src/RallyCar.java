@@ -302,13 +302,15 @@ public class RallyCar extends Car {
 	}
 
 	private int totalCheckpoints;
+	private final boolean DEBUG = false;
 	private int goalCheckpoint = 0;
 	private int prevCheckpoint = -1;
-	private int targetCheckpoint = 0;
 	public final static int MAX_X = 1010;
 	public final static int MAX_Y = 580;
 	public final static int BLOCK_SZ = 10;
-	public final static int ENEMY_RANGE = 11;
+	public final static int ENEMY_RANGE = 7;
+	public final static int TURN_RADIUS = 50;
+	public final static int TURN_ANGLE = 35;
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
@@ -335,6 +337,7 @@ public class RallyCar extends Car {
 	private int[][] visit = new int[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
 	private Vec2d[][] prev = new Vec2d[getBlock(MAX_X) + 50][getBlock(MAX_Y) + 50];
 
+	private ArrayDeque<Integer> prevGoals = new ArrayDeque<>();
 	private ArrayDeque<Integer> prevCheckpoints = new ArrayDeque<>();
 	public double get(Vec2d block){
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y)
@@ -463,13 +466,34 @@ public class RallyCar extends Car {
 	private double adjustedDriveThrottle(double x, double steeringMag){
 		// https://www.desmos.com/calculator/gflge44xrw
 		// just a function that i made that *looks* good enough
-		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
+//		return Math.min(Math.max((25 + Math.log10(x + 300) * 23) / (Math.pow(steeringMag, 0.5) * 0.5), 10), 100);
+		return 100;
 	}
 
 	private double adjustedSteerFunction(double x){
-		// https://www.desmos.com/calculator/8ognwcjnjf
-		// just another function that i made that *looks* good enough
-		return (Math.pow(x * 40, 0.4) - 1 / 20.0 * x) / 3.0;
+		// change = steer * speed / 5
+		// steer = change / speed * 5
+		return Math.min(10, x / getSpeed() * 5);
+	}
+
+	private boolean canTurnTo(Vec2d pos){
+		Vec2d cur = getCurrentLocation();
+		Vec2d dirVector = getCurrentDirection();
+		Vec2d curPos = getCurrentLocation();
+		double cHeading = dirVector.getDirection();
+		double angle = curPos.getAngleTo(pos);
+		double diff = Vec2d.getAngleDifference(cHeading, angle);
+		if(Math.abs(diff) >= 110){
+			// reverse
+			cHeading = dirVector.multiply(-1).getDirection();
+			angle = curPos.getAngleTo(pos);
+			diff = Vec2d.getAngleDifference(cHeading, angle);
+		}
+		if(cur.distanceTo(pos) >= TURN_RADIUS){
+			return true;
+		}
+		if(DEBUG) System.out.println(diff + " " + cur.distanceTo(pos));
+		return Math.abs(diff) <= TURN_ANGLE;
 	}
 
 	public void driveTowards(Vec2d pos, double dist){
@@ -523,12 +547,12 @@ public class RallyCar extends Car {
 			}
 		}
 		if(getFuel() <= 25){
-			System.out.println("refueling");
+			if(DEBUG) System.out.println("refueling");
 			CarPath bestDepot = null;
 			for(IObject depot : fuelDepots){
 				Vec2d pos = getLocation(depot);
 				CarPath path = getPathTo(pos);
-				if(path == null) continue;
+				if(path == null || !canTurnTo(pos)) continue;
 				if(bestDepot == null || path.weight < bestDepot.weight){
 					bestDepot = path;
 				}
@@ -548,10 +572,12 @@ public class RallyCar extends Car {
 		for(int i = 0; i < checkpoints.length; i++){
 			IObject chk = checkpoints[i];
 			Vec2d pos = getLocation(chk);
+			if(!prevGoals.isEmpty() && !prevGoals.getLast().equals(i) && prevGoals.contains(i)) continue;
 			if(prevCheckpoints.contains(i)) continue;
+			if(!canTurnTo(pos)) continue;
 			CarPath path = getPathTo(pos);
 			if(path == null) continue;
-			double weight = i == goalCheckpoint ? -400 : 0;
+			double weight = i == goalCheckpoint ? -500 : 0;
 			weight += path.weight;
 			if(weight <= bestCheckpoint){
 				bestCheckpoint = weight;
@@ -559,8 +585,11 @@ public class RallyCar extends Car {
 				goingto = i;
 			}
 		}
+		if(prevGoals.isEmpty() || !prevGoals.getLast().equals(goalCheckpoint))
+			prevGoals.add(goingto);
+		while(prevGoals.size() >= 4) prevGoals.removeFirst();
 		if (bestCheckpointPath != null) {
-			System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
+			if(DEBUG) System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
 		}
 		return bestCheckpointPath;
 	}
@@ -590,7 +619,7 @@ public class RallyCar extends Car {
 		CarPath path = getOptimalGoal();
 		if(path == null) return;
 		driveTowards(path.points.peekFirst(), path.length);
-		System.out.println(getSpeed());
+		if(DEBUG) System.out.println(getSpeed());
 //		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
 //			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
 ////				if(visit[j][i] == 1){
