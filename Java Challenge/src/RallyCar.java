@@ -181,19 +181,6 @@ class Pair<T, V>{
 		this.x = x;
 		this.y = y;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		Pair<?, ?> pair = (Pair<?, ?>) o;
-		return Objects.equals(x, pair.x) && Objects.equals(y, pair.y);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(x, y);
-	}
 }
 
 class CarPath{
@@ -319,15 +306,6 @@ class LineUtils {
 	}
 }
 
-class NodeChain {
-	public int flagId;
-	public Vec2d pos;
-	public NodeChain nextFlag;
-	public CarPath path;
-	public double simplicity = 0;
-	public double weight = 0;
-}
-
 /**
  * This is the class that you must implement to enable your car within
  * the CodeRally track. Adding code to these methods will give your car
@@ -363,11 +341,6 @@ public class RallyCar extends Car {
 	// Defines parameters related to refueling
 	public final static int REFUEL_THRESHOLD = 25;
 	public final static int FUEL_FULL_THRESHOLD = 65;
-	// The number of graph weight points "rebated" for pathfinding to the next consecutive checkpoint
-	public final static int CONSEC_POINT_REBATE = -5000;
-	// The amount that the graph weight can deviate by before considering them different weights
-	public final static int WEIGHT_TO_CONSIDER_SAME = 5000;
-
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
@@ -402,44 +375,19 @@ public class RallyCar extends Car {
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y) return;
 		grid[(int)block.x][(int)block.y] = value;
 	}
-	private NodeChain[] dpChain;
-
-	private NodeChain getBestChain(int curNode){
-		if(dpChain[curNode] != null){
-			return dpChain[curNode];
-		}
-		NodeChain cur = new NodeChain();
-		dpChain[curNode] = cur;
-		cur.pos = getLocation(World.getCheckpoints()[curNode]);
-		cur.flagId = curNode;
-		cur.weight = Double.MAX_VALUE / 10;
-		int nextId = incrementCheckpoint(curNode);
-		NodeChain chain = getBestChain(nextId);
-		CarPath path = getPathTo(cur.pos, chain.pos);
-		double cw = path.weight + CONSEC_POINT_REBATE;
-		double diff = Math.abs(cur.weight - (cw + chain.weight));
-		if(cur.weight >= cw + chain.weight || diff < WEIGHT_TO_CONSIDER_SAME){
-			double newSimplicity = chain.simplicity + LineUtils.getSimplicity(path);
-			if(diff > WEIGHT_TO_CONSIDER_SAME){
-				cur.nextFlag = chain;
-				cur.weight = cw + chain.weight;
-				cur.simplicity = newSimplicity;
-				cur.path = path;
-			}
-			else if(newSimplicity < cur.simplicity){
-				cur.nextFlag = chain;
-				cur.weight = cw + chain.weight;
-				cur.simplicity = newSimplicity;
-				cur.path = path;
-			}
-		}
-		if(cur.nextFlag == null) cur.weight = 0;
-		return cur;
-	}
 
 	public void updateMap(){
 		for(double[] arr : grid){
 			Arrays.fill(arr, 0);
+		}
+		for(double[] arr : dist){
+			Arrays.fill(arr, Double.MAX_VALUE / 10);
+		}
+		for(int[] arr : visit){
+			Arrays.fill(arr, 0);
+		}
+		for(Vec2d[] arr : prev){
+			Arrays.fill(arr, null);
 		}
 		for(int q = 0; q < 2; q++){
 			for(int i = q; i <= getBlock(MAX_X) - q; i++){
@@ -505,12 +453,15 @@ public class RallyCar extends Car {
 	// Simple offset array in all 8 directions in 2d
 	private static final int[] mvarr = new int[]{1, -1, 0, 0, -1, -1, 1, 1};
 	private static final int[] mvarrc = new int[]{0, 0, 1, -1, -1, 1, -1, 1};
-	public CarPath getPathTo(Vec2d start, Vec2d dest){
-		Pair<Vec2d, Vec2d> key = new Pair<>(start, dest);
-		start = getBlockLocation(start);
-		if(pathFindingCache.containsKey(key)) return pathFindingCache.get(key);
-		clearArrays();
+	public CarPath getPathTo(Vec2d dest){
+		for(double[] arr : dist){
+			Arrays.fill(arr, Double.MAX_VALUE / 10);
+		}
+		for(int[] arr : visit){
+			Arrays.fill(arr, 0);
+		}
 		PriorityQueue<Pair<Double, Vec2d>> pq = new PriorityQueue<>(new PointComparator());
+		Vec2d start = getBlockLocation(getPredictedLocation());
 		pq.add(new Pair<>(0d, start));
 		while(pq.size() != 0){
 			Pair<Double, Vec2d> v = pq.poll();
@@ -552,20 +503,7 @@ public class RallyCar extends Car {
 			visit[getBlock((int)pt.x)][getBlock((int)pt.y)] = 4;
 		}
 		visit[(int)start.x][(int)start.y] = 3;
-		pathFindingCache.put(key, path);
 		return path;
-	}
-
-	private void clearArrays() {
-		for(double[] arr : dist){
-			Arrays.fill(arr, Double.MAX_VALUE / 10);
-		}
-		for(int[] arr : visit){
-			Arrays.fill(arr, 0);
-		}
-		for(Vec2d[] arr : prev){
-			Arrays.fill(arr, null);
-		}
 	}
 
 	private double adjustedDriveThrottle(double x, double steeringMag){
@@ -650,13 +588,10 @@ public class RallyCar extends Car {
 	private boolean isRefueling = false;
 	private boolean beginRefueling = false;
 	private Vec2d fuelLoc = null;
-	private HashMap<Pair<Vec2d, Vec2d>, CarPath> pathFindingCache;
+
 	public CarPath getOptimalGoal(){
 		IObject[] checkpoints = World.getCheckpoints();
 		IObject[] fuelDepots = World.getFuelDepots();
-
-		dpChain = new NodeChain[checkpoints.length];
-		pathFindingCache = new HashMap<>();
 
 		Vec2d currentPos = getCurrentLocation();
 
@@ -680,7 +615,7 @@ public class RallyCar extends Car {
 			CarPath bestDepot = null;
 			for(IObject depot : fuelDepots){
 				Vec2d pos = getLocation(depot);
-				CarPath path = getPathTo(getPredictedLocation(), pos);
+				CarPath path = getPathTo(pos);
 				if(path == null || !canTurnTo(pos)) continue;
 				path.destination = pos;
 				if(bestDepot == null || path.weight < bestDepot.weight){
@@ -698,28 +633,32 @@ public class RallyCar extends Car {
 			return bestDepot;
 		}
 
-		NodeChain bestChain = null;
-		int pt = goalCheckpoint;
+		double bestCheckpoint = Double.MAX_VALUE;
+		CarPath bestCheckpointPath = null;
+		int goingto = -1;
 		for(int i = 0; i < checkpoints.length; i++){
-			IObject chk = checkpoints[pt];
+			IObject chk = checkpoints[i];
 			Vec2d pos = getLocation(chk);
+			if(!prevGoals.isEmpty() && !prevGoals.getLast().equals(i) && prevGoals.contains(i)) continue;
+			if(prevCheckpoints.contains(i)) continue;
 			if(!canTurnTo(pos)) continue;
-			NodeChain chain = getBestChain(pt);
-			pt = incrementCheckpoint(pt);
-			if(bestChain == null) {
-				bestChain = chain;
-				continue;
-			}
-			CarPath path = getPathTo(getPredictedLocation(), pos);
-			if(bestChain.weight >= chain.weight + path.weight){
-				bestChain = chain;
+			CarPath path = getPathTo(pos);
+			if(path == null) continue;
+			double weight = i == goalCheckpoint ? -900 : 0;
+			weight += path.weight;
+			if(weight <= bestCheckpoint){
+				bestCheckpoint = weight;
+				bestCheckpointPath = path;
+				goingto = i;
 			}
 		}
-		return bestChain.path;
-	}
-
-	private int incrementCheckpoint(int cur){
-		return (cur + 1) % totalCheckpoints;
+		if(prevGoals.isEmpty() || !prevGoals.getLast().equals(goalCheckpoint))
+			prevGoals.add(goingto);
+		while(prevGoals.size() >= 4) prevGoals.removeFirst();
+		if (bestCheckpointPath != null) {
+			if(DEBUG) System.out.println(bestCheckpointPath.destination + " " + goingto + " " + goalCheckpoint + " " + getPreviousCheckpoint());
+		}
+		return bestCheckpointPath;
 	}
 
 	/**
@@ -734,7 +673,7 @@ public class RallyCar extends Car {
 			prevCheckpoint = getPreviousCheckpoint();
 			prevCheckpoints.addLast(prevCheckpoint);
 			while(prevCheckpoints.size() >= 4) prevCheckpoints.removeFirst();
-			goalCheckpoint = incrementCheckpoint(getPreviousCheckpoint());
+			goalCheckpoint = (getPreviousCheckpoint() + 1) % totalCheckpoints;
 		}
 
 		if(getValue(getBlockLocation(getCurrentLocation()), grid) >= 5 && !isRefueling){
@@ -757,14 +696,10 @@ public class RallyCar extends Car {
 			}
 		}
 
-		try{
-			CarPath path = getOptimalGoal();
-			if(path == null) return;
-			driveTowards(path.points.peekFirst(), path.length);
-			if(DEBUG) System.out.println(getSpeed());
-		}catch (Exception e){
-			e.printStackTrace();
-		}
+		CarPath path = getOptimalGoal();
+		if(path == null) return;
+		driveTowards(path.points.peekFirst(), path.length);
+		if(DEBUG) System.out.println(getSpeed());
 		// printing out the grid causes the car to lag!
 //		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
 //			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
