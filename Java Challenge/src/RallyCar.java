@@ -7,6 +7,13 @@ import com.ibm.rally.World;
 import java.util.*;
 
 /**
+ * @author Adam Chen
+ * Date: 5/16/2022
+ * My submission to ICS3/CodeRally. Main code starts at line 788.
+ * Sadly, I could only get a single file to run in CodeRally, so gl!
+ */
+
+/**
  * 2 dimensional vector extensions, used for calculating EVERYTHING :)
  */
 class Vec2d implements Comparable<Vec2d>{
