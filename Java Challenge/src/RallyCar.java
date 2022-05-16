@@ -6,20 +6,24 @@ import com.ibm.rally.World;
 
 import java.util.*;
 
+/**
+ * 2 dimensional vector extensions, used for calculating EVERYTHING :)
+ */
 class Vec2d implements Comparable<Vec2d>{
-	public static final Vec2d ZERO = new Vec2d(0, 0);
-	public static final Vec2d NORTH = new Vec2d(0, -1);
 	public Vec2d(double x, double y) {
 		this.x = x;
 		this.y = y;
 	}
+
+	/**
+	 * Converts a polar vector into a cartesian one
+	 * @param magnitude the magnitude
+	 * @param direction the direction
+	 * @return a cartesian vector
+	 */
 	public static Vec2d ofPolar(double magnitude, double direction){
 		double radDir = direction / 180 * Math.PI;
 		return new Vec2d(magnitude * Math.sin(radDir), -magnitude * Math.cos(radDir));
-	}
-	public Vec2d(Vec2d other){
-		this.x = other.x;
-		this.y = other.y;
 	}
 
 	/**
@@ -77,14 +81,6 @@ class Vec2d implements Comparable<Vec2d>{
 	}
 
 	/**
-	 * Converts screen space coordinates to cartesian
-	 * @return
-	 */
-	public Vec2d toCartesian(){
-		return new Vec2d(-y, x);
-	}
-
-	/**
 	 * Gets the bearing of another point in relation to the current point
 	 * @param other
 	 * @return
@@ -124,6 +120,12 @@ class Vec2d implements Comparable<Vec2d>{
 	}
 	public double x, y;
 
+	/**
+	 * Gets the smaller angle difference between two headings
+	 * @param a1 heading 1
+	 * @param a2 heading 2
+	 * @return the difference added to a1 to achieve a2
+	 */
 	public static double getAngleDifference(double a1, double a2){
 		if(a1 < 0 != a2 < 0){
 			double c1 = Math.abs(a1) + Math.abs(a2);
@@ -165,6 +167,14 @@ class Vec2d implements Comparable<Vec2d>{
 				'}';
 	}
 
+	/**
+	 * Gets the distance between a line and a point
+	 * @param ep1 p1 of the line
+	 * @param ep2 p2 of the line
+	 * @param pt the point
+	 * @return the distance
+	 */
+
 	public static double getLineDist(Vec2d ep1, Vec2d ep2, Vec2d pt){
 		// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
 		double dx1 = ep2.x - ep1.x;
@@ -173,6 +183,11 @@ class Vec2d implements Comparable<Vec2d>{
 	}
 }
 
+/**
+ * Just a regular ol' pair/tuple class that java doesn't like providing
+ * @param <T> The first type
+ * @param <V> The second type
+ */
 class Pair<T, V>{
 	public T x;
 	public V y;
@@ -183,10 +198,25 @@ class Pair<T, V>{
 	}
 }
 
+/**
+ * An object that represents a predicted path of the car
+ */
 class CarPath{
+	/**
+	 * The 2d world points of the path
+	 */
 	public ArrayDeque<Vec2d> points = new ArrayDeque<>();
+	/**
+	 * The length of the path
+	 */
 	public double length = 0;
+	/**
+	 * The weight of the path
+	 */
 	public double weight = 0;
+	/**
+	 * The ending position in the path
+	 */
 	public Vec2d destination;
 
 	@Override
@@ -200,6 +230,9 @@ class CarPath{
 	}
 }
 
+/**
+ * A class used to compare nodes during the pathfinding
+ */
 class PointComparator implements Comparator<Pair<Double, Vec2d>>{
 
 	@Override
@@ -211,7 +244,16 @@ class PointComparator implements Comparator<Pair<Double, Vec2d>>{
 	}
 }
 
-class LineUtils {
+/**
+ * A Utility class containing the code for line simplification
+ */
+class LineUtil {
+	/**
+	 * Executes the Ramer–Douglas–Peucker algorithm to simplify the number of poly-lines in the path of the vehicle
+	 * @param epsilon the degree of "simpleness" of the line
+	 * @param input a list of points representing a poly-line
+	 * @return
+	 */
 
 	public static ArrayDeque<Vec2d> simplify(double epsilon, ArrayDeque<Vec2d> input){
 		if(input.size() <= 1) return input;
@@ -264,46 +306,6 @@ class LineUtils {
 		}
 		return ans;
 	}
-
-	public static double getSimplicity(CarPath path){
-		Iterator<Vec2d> itr = path.points.iterator();
-		Vec2d prev = null;
-		double totalAngleChange = 0;
-		while(itr.hasNext()){
-			if(prev == null){
-				prev = itr.next();
-			}
-			else{
-				Vec2d cur = itr.next();
-				Vec2d dir = cur.subtract(prev).normalize();
-				totalAngleChange += Math.abs(RallyCar.getDeltaAngleTo(dir, prev, cur));
-				prev = cur;
-			}
-		}
-		return totalAngleChange;
-	}
-
-	public static ArrayDeque<Vec2d> chaikinIter(double subdivideAmount, ArrayDeque<Vec2d> input){
-		ArrayDeque<Vec2d> output = new ArrayDeque<>();
-		Iterator<Vec2d> itr = input.iterator();
-		Vec2d prev = null;
-		output.add(input.getFirst());
-		while(itr.hasNext()){
-			if(prev == null){
-				prev = itr.next();
-			}
-			else{
-				Vec2d cur = itr.next();
-				double dist = cur.distanceTo(prev);
-				Vec2d dir = cur.subtract(prev).normalize();
-				output.add(prev.add(dir.multiply(dist * subdivideAmount)));
-				output.add(cur.add(dir.multiply(dist * -subdivideAmount)));
-				prev = cur;
-			}
-		}
-		output.add(input.getLast());
-		return output;
-	}
 }
 
 /**
@@ -319,11 +321,10 @@ public class RallyCar extends Car {
 	public byte getColor() {
 		return CAR_YELLOW;
 	}
+	// Defines some basic game information
 
 	private int totalCheckpoints;
 	private final boolean DEBUG = false;
-	private int goalCheckpoint = 0;
-	private int prevCheckpoint = -1;
 	// Defines the map dimensions
 	public final static int MAX_X = 1010;
 	public final static int MAX_Y = 580;
@@ -341,24 +342,74 @@ public class RallyCar extends Car {
 	// Defines parameters related to refueling
 	public final static int REFUEL_THRESHOLD = 25;
 	public final static int FUEL_FULL_THRESHOLD = 65;
+	// Defines the state that the car is currently in
+	private boolean isRefueling = false;
+	private boolean beginRefueling = false;
+	private int goalCheckpoint = 0;
+	private int prevCheckpoint = -1;
+	private Vec2d fuelLoc = null;
+	private int stuckTicks = 0;
+	private boolean tryingEscape = false;
+	private int prevState = -1;
+
+	/**
+	 * Converts the game dimension into the virtual world dimension
+	 * @param dim game dimension
+	 * @return virtual world dimension
+	 */
 	private int getBlock(int dim){
 		return dim / BLOCK_SZ;
 	}
+	/**
+	 * Converts the virtual dimension into the game world dimension
+	 * @param dim virtual world dimension
+	 * @return world dimension
+	 */
 	private int getMap(int dim){
 		return dim * BLOCK_SZ;
 	}
+
+	/**
+	 * Gets the location of an object on the world
+	 * @param obj the object
+	 * @return the game location
+	 */
 	private Vec2d getLocation(IObject obj){
 		return new Vec2d(obj.getX(), obj.getY());
 	}
+
+	/**
+	 * Converts a game location into a virtual world location
+	 * @param mapLocation the game location
+	 * @return virtual world location
+	 */
 	private Vec2d getBlockLocation(Vec2d mapLocation){
 		return new Vec2d(getBlock((int)mapLocation.x), getBlock((int)mapLocation.y));
 	}
+	/**
+	 * Converts a virtual world location into a world location
+	 * @param blockLocation the virtual world location
+	 * @return world location
+	 */
 	private Vec2d getMapLocation(Vec2d blockLocation){
 		return new Vec2d(getMap((int)blockLocation.x), getMap((int)blockLocation.y));
 	}
+
+	/**
+	 * Gets the value at a specified virtual world location
+	 * @param pos the position
+	 * @param arr the array to access
+	 * @return the data
+	 */
 	private double getValue(Vec2d pos, double[][] arr){
 		return arr[((int) pos.x)][((int) pos.y)];
 	}
+	/**
+	 * Sets the value at a specified virtual world location
+	 * @param pos the position
+	 * @param arr the array to set
+	 * @return the data that was set
+	 */
 	private double setValue(Vec2d pos, double[][] arr, double val){
 		return arr[((int) pos.x)][((int) pos.y)] = val;
 	}
@@ -371,12 +422,21 @@ public class RallyCar extends Car {
 	private ArrayDeque<Integer> prevGoals = new ArrayDeque<>();
 	private ArrayDeque<Integer> prevCheckpoints = new ArrayDeque<>();
 
+	/**
+	 * Sets the data contained in the grid with bound checks
+	 * @param block the virtual world location
+	 * @param value the value
+	 */
 	public void set(Vec2d block, double value){
 		if(block.x < 0 || block.x >= MAX_X || block.y < 0 || block.y >= MAX_Y) return;
 		grid[(int)block.x][(int)block.y] = value;
 	}
 
+	/**
+	 * Synchronizes the virtual world with the game world
+	 */
 	public void updateMap(){
+		// clear arrays
 		for(double[] arr : grid){
 			Arrays.fill(arr, 0);
 		}
@@ -389,6 +449,7 @@ public class RallyCar extends Car {
 		for(Vec2d[] arr : prev){
 			Arrays.fill(arr, null);
 		}
+		// add weighting to the edge of the map to prevent the car from bumping into it
 		for(int q = 0; q < 2; q++){
 			for(int i = q; i <= getBlock(MAX_X) - q; i++){
 				grid[i][q] += 10 - q;
@@ -400,6 +461,7 @@ public class RallyCar extends Car {
 			}
 		}
 
+		// establish a weighted buffer zone around every opponent car
 		for(ICar car : getOpponents()){
 			Vec2d pos = getLocation(car);
 			Vec2d block = getBlockLocation(pos);
@@ -407,6 +469,7 @@ public class RallyCar extends Car {
 			if(car.getSpeed() < 0){
 				dir = dir.multiply(-1);
 			}
+			// predict the trajectory of the opponent car
 			ArrayList<Vec2d> rayTracer = new ArrayList<>();
 			rayTracer.add(block);
 			rayTracer.add(block.add(dir.multiply(3)));
@@ -430,18 +493,35 @@ public class RallyCar extends Car {
 		}
 	}
 
+	/**
+	 * Gets the current location of the car in terms of game space
+	 * @return the location
+	 */
 	public Vec2d getCurrentLocation(){
 		return new Vec2d(getX(), getY());
 	}
 
+	/**
+	 * Gets the direction vector of the current car
+	 * @return a direction vector
+	 */
 	public Vec2d getCurrentDirection(){
 		return Vec2d.ofPolar(1, this.getHeading());
 	}
 
+	/**
+	 * Checks if a position is in the game world
+	 * @param loc the position
+	 * @return true if it is contained in, otherwise false
+	 */
 	public boolean isInMap(Vec2d loc){
 		return !(loc.x < 0) && !(loc.y < 0) && !(loc.x >= MAX_X) && !(loc.y >= MAX_Y);
 	}
 
+	/**
+	 * Gets the predicted location of the car with respects to its current speed
+	 * @return the predicted location
+	 */
 	public Vec2d getPredictedLocation(){
 		int scalar = 1;
 		if(getThrottle() < 0) scalar = -1;
@@ -453,6 +533,12 @@ public class RallyCar extends Car {
 	// Simple offset array in all 8 directions in 2d
 	private static final int[] mvarr = new int[]{1, -1, 0, 0, -1, -1, 1, 1};
 	private static final int[] mvarrc = new int[]{0, 0, 1, -1, -1, 1, -1, 1};
+
+	/**
+	 * Uses a hybrid between dijkstra and grid-based breadth first search to find the lowest weight path from the current location to the destination
+	 * @param dest the destination
+	 * @return the most optimal path
+	 */
 	public CarPath getPathTo(Vec2d dest){
 		for(double[] arr : dist){
 			Arrays.fill(arr, Double.MAX_VALUE / 10);
@@ -496,9 +582,7 @@ public class RallyCar extends Car {
 		}
 		visit[getBlock((int)dest.x)][getBlock((int)dest.y)] = 2;
 
-		path.points = LineUtils.simplify(3, path.points);
-//		path.points = LineUtils.chaikinIter(0.25, path.points);
-//		path.points = LineUtils.chaikinIter(0.25, path.points);
+		path.points = LineUtil.simplify(3, path.points);
 		for(Vec2d pt : path.points){
 			visit[getBlock((int)pt.x)][getBlock((int)pt.y)] = 4;
 		}
@@ -506,20 +590,35 @@ public class RallyCar extends Car {
 		return path;
 	}
 
+	/**
+	 * A function that determines the throttle of the car, this ensures the accuracy of turning
+	 * @param x the distance until the next goal
+	 * @param steeringMag the magnitude of the turn
+	 * @return the throttle
+	 */
 	private double adjustedDriveThrottle(double x, double steeringMag){
-		// https://www.desmos.com/calculator/gflge44xrw
+		// https://www.desmos.com/calculator/qwtj7mltel
 		// just a function that i made that *looks* good enough
 		if(x < 50 && isRefueling) return 10;
 		return Math.min(Math.max((25 + Math.log10(x + 300) * DRIVE_TURN_RATE) / (Math.pow(steeringMag, 0.5) * 0.5), MIN_DRIVE_SPEED - steeringMag), 100);
-//		return 100;
 	}
 
+	/**
+	 * A function that determines how much to turn to meet an angle
+	 * @param x the goal angle
+	 * @return the amount to turn
+	 */
 	private double adjustedSteerFunction(double x){
 		// change = steer * speed / 5
 		// steer = change / speed * 5
 		return Math.min(10, x / getSpeed() * 5);
 	}
 
+	/**
+	 * Checks if it is possible to turn towards a position
+	 * @param pos the position
+	 * @return true if it is possible, otherwise false
+	 */
 	private boolean canTurnTo(Vec2d pos){
 		Vec2d cur = getCurrentLocation();
 		Vec2d dirVector = getCurrentDirection();
@@ -540,16 +639,33 @@ public class RallyCar extends Car {
 		return Math.abs(diff) <= TURN_ANGLE;
 	}
 
+	/**
+	 * Gets the angle required to reach dest from c
+	 * @param dir the current heading of c
+	 * @param cpos the position of c
+	 * @param dest the destination position
+	 * @return the angle required
+	 */
 	public static double getDeltaAngleTo(Vec2d dir, Vec2d cpos, Vec2d dest){
 		double cHeading = dir.getDirection();
 		double angle = cpos.getAngleTo(dest);
 		return Vec2d.getAngleDifference(cHeading, angle);
 	}
 
+	/**
+	 * Gets the angle required from the current state
+	 * @param dest the destination position
+	 * @return the angle required
+	 */
 	public double getDeltaAngleTo(Vec2d dest){
 		return getDeltaAngleTo(getCurrentDirection(), getCurrentLocation(), dest);
 	}
 
+	/**
+	 * Drives the car towards a certain location
+	 * @param pos the position
+	 * @param dist the distance to the position
+	 */
 	public void driveTowards(Vec2d pos, double dist){
 		Vec2d dirVector = getCurrentDirection();
 		Vec2d curPos = getCurrentLocation();
@@ -571,9 +687,9 @@ public class RallyCar extends Car {
 
 		double realSteerAmount = adjustedSteerFunction(steerMag) * steerDir;
 		setSteeringSetting((int) realSteerAmount);
-//		System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
+		if(DEBUG) System.out.println("steer: " + realSteerAmount + " diff: " + diff + " cur: " + cHeading + " ang: " + angle);
 		setThrottle(reverseCoeff * (int) adjustedDriveThrottle(dist, steerMag));
-//		System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
+		if(DEBUG) System.out.println("thro: " + adjustedDriveThrottle(dist, steerMag) + " dist: " + dist);
 	}
 
 
@@ -585,10 +701,10 @@ public class RallyCar extends Car {
 		totalCheckpoints = World.getCheckpoints().length;
 	}
 
-	private boolean isRefueling = false;
-	private boolean beginRefueling = false;
-	private Vec2d fuelLoc = null;
-
+	/**
+	 * Gets the optimal action that the car should be executing
+	 * @return
+	 */
 	public CarPath getOptimalGoal(){
 		IObject[] checkpoints = World.getCheckpoints();
 		IObject[] fuelDepots = World.getFuelDepots();
@@ -666,7 +782,25 @@ public class RallyCar extends Car {
 	 */
 	public void move(int lastMoveTime, boolean hitWall, ICar collidedWithCar, ICar hitBySpareTire) {
 		// put implementation here
-
+		if(!isRefueling && Math.abs(getSpeed()) <= 0.1){
+			stuckTicks++;
+		}else{
+			stuckTicks = 0;
+		}
+		// prevent car from getting stuck in one place
+		if(stuckTicks >= 20){
+			tryingEscape = true;
+			stuckTicks = 5;
+		}
+		if(tryingEscape){
+			// try to wiggle the car out
+			enterProtectMode();
+			setThrottle(MIN_THROTTLE);
+			setSteeringSetting((int) (Math.random() * 20 - 10));
+			stuckTicks--;
+			if(stuckTicks == 0) tryingEscape = false;
+			return;
+		}
 		updateMap();
 		if(getPreviousCheckpoint() != prevCheckpoint){
 			prevCheckpoints.addLast(goalCheckpoint);
@@ -690,6 +824,7 @@ public class RallyCar extends Car {
 			}
 		}
 
+		// if there is a good candidate, throw the tire
 		for(ICar car : getOpponents()){
 			if(Math.abs(getDeltaAngleTo(getLocation(car))) <= 10 && isReadyToThrowSpareTire() && !car.isInProtectMode()){
 				throwSpareTire();
@@ -700,26 +835,5 @@ public class RallyCar extends Car {
 		if(path == null) return;
 		driveTowards(path.points.peekFirst(), path.length);
 		if(DEBUG) System.out.println(getSpeed());
-		// printing out the grid causes the car to lag!
-//		for(int i = 0; i <= MAX_Y / BLOCK_SZ; i++){
-//			for(int j = 0; j <= MAX_X / BLOCK_SZ; j++){
-////				if(visit[j][i] == 1){
-////					System.out.print("X");
-////				}
-//				if(grid[j][i] != 0){
-//					System.out.print("X");
-//				}
-////				if(visit[j][i] == 2){
-////					System.out.print("D");
-////				}
-////				if(visit[j][i] == 3){
-////					System.out.print("S");
-////				}
-//				else{
-//					System.out.print(".");
-//				}
-//			}
-//			System.out.println();
-//		}
 	}
 }
