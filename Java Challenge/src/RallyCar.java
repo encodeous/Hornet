@@ -350,7 +350,6 @@ public class RallyCar extends Car {
 	private Vec2d fuelLoc = null;
 	private int stuckTicks = 0;
 	private boolean tryingEscape = false;
-	private int prevState = -1;
 
 	/**
 	 * Converts the game dimension into the virtual world dimension
