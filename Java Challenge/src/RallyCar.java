@@ -320,7 +320,7 @@ class LineUtil {
  * the CodeRally track. Adding code to these methods will give your car
  * it's personality and allow it to compete.
  */
-@JavaChallenge(name="The Hornet", organization="Adam")
+@JavaChallenge(name="The Hornet", organization="Adam Chen")
 public class RallyCar extends Car {
 	/**
 	 * @see com.ibm.rally.Car#getColor()
@@ -792,6 +792,7 @@ public class RallyCar extends Car {
 			stuckTicks++;
 		}else{
 			stuckTicks = 0;
+			tryingEscape = false;
 		}
 		// prevent car from getting stuck in one place
 		if(stuckTicks >= 20){
@@ -801,11 +802,15 @@ public class RallyCar extends Car {
 		if(tryingEscape){
 			// try to wiggle the car out
 			enterProtectMode();
-			setThrottle(MIN_THROTTLE);
+			setThrottle((int) (Math.random() * 200 - 100));
 			setSteeringSetting((int) (Math.random() * 20 - 10));
 			stuckTicks--;
-			if(stuckTicks == 0) tryingEscape = false;
-			return;
+			if(stuckTicks <= 0) {
+				tryingEscape = false;
+				stuckTicks = 0;
+			}else{
+				return;
+			}
 		}
 		updateMap();
 		if(getPreviousCheckpoint() != prevCheckpoint){
